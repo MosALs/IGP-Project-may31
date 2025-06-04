@@ -1,6 +1,10 @@
 pipeline {
-    agent { 
-        label 'master' 
+    agent {
+        label 'master'
+    }
+    
+    tools {
+        maven 'Maven-3.9'
     }
     
     environment {
@@ -19,7 +23,7 @@ pipeline {
                 script {
                     echo "📦 Starting packaging of IGP project"
                     echo "📥 Checking out code..."
-                    git 'https://github.com/MosALs/IGP-Grad-Project.git'
+                    git 'https://github.com/MosALs/IGP-Project-may31.git'
                 }
             }
         }
@@ -27,22 +31,18 @@ pipeline {
         stage('Code Packaging') {
             steps {
                 script {
-                    echo "📦 Creating JAR package from 3 classes..."
+                    echo "📦 Creating WAR package from 3 classes..."
                     
                     // Create package (skip tests since they ran in previous job)
                     sh 'mvn package -DskipTests'
                     
                     echo "✅ Packaging completed!"
                     echo "📁 Package created:"
+                    sh 'ls -lh target/*.war || echo "No WAR files found"'
                     sh 'ls -lh target/*.jar || echo "No JAR files found"'
                     
-                    // Get JAR size
-                    sh '''
-                        if [ -f target/*.jar ]; then
-                            echo "📊 JAR file details:"
-                            du -h target/*.jar
-                        fi
-                    '''
+                    // Show all target contents
+                    sh 'ls -la target/'
                 }
             }
         }
@@ -58,10 +58,11 @@ IGP Grad Project - Deployment Package
 Build: #${BUILD_NUMBER}
 Date: ${new Date()}
 Classes: 3 main classes + 1 test class
-Package: JAR file ready for deployment
+Package Type: WAR (Web Application)
 
-Run Command:
-java -jar target/*.jar
+Deployment:
+- Deploy WAR file to Tomcat or similar web server
+- Access via: http://localhost:8080/ABCtechnologies
 
 Status: READY ✅
 """
@@ -75,9 +76,26 @@ Status: READY ✅
     
     post {
         success {
-            echo "🎉 Successfully packaged IGP project!"
-            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            archiveArtifacts artifacts: 'deployment-info.txt'
+            script {
+                echo "🎉 Successfully packaged IGP project!"
+                
+                // Archive WAR files (since it's a web application)
+                def warExists = sh(script: 'ls target/*.war >/dev/null 2>&1', returnStatus: true) == 0
+                def jarExists = sh(script: 'ls target/*.jar >/dev/null 2>&1', returnStatus: true) == 0
+                
+                if (warExists) {
+                    echo "📦 Found WAR files - archiving..."
+                    archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+                } else if (jarExists) {
+                    echo "📦 Found JAR files - archiving..."
+                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                } else {
+                    echo "⚠️ No WAR or JAR files found - archiving compiled classes"
+                    archiveArtifacts artifacts: 'target/classes/**/*', allowEmptyArchive: true
+                }
+                
+                archiveArtifacts artifacts: 'deployment-info.txt'
+            }
         }
         failure {
             echo "❌ Packaging failed!"
