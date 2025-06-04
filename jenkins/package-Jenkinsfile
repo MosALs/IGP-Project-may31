@@ -70,34 +70,15 @@ Status: READY ✅
         }
     }
     
-    post {
+     post {
         success {
-            script {
-                echo "🎉 Successfully packaged IGP project!"
-                
-                // Archive WAR files (since it's a web application)
-                def warExists = sh(script: 'ls target/*.war >/dev/null 2>&1', returnStatus: true) == 0
-                def jarExists = sh(script: 'ls target/*.jar >/dev/null 2>&1', returnStatus: true) == 0
-                
-                if (warExists) {
-                    echo "📦 Found WAR files - archiving..."
-                    archiveArtifacts artifacts: 'target/*.war', fingerprint: true
-                } else if (jarExists) {
-                    echo "📦 Found JAR files - archiving..."
-                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-                } else {
-                    echo "⚠️ No WAR or JAR files found - archiving compiled classes"
-                    archiveArtifacts artifacts: 'target/classes/**/*', allowEmptyArchive: true
-                }
-                
-                archiveArtifacts artifacts: 'deployment-info.txt'
-            }
+            echo "🎉 IGP Package Job completed successfully!"
         }
         failure {
             echo "❌ Packaging failed!"
         }
         always {
-            cleanWs()
+            echo "🧹 Pipeline completed - workspace will be cleaned"
         }
     }
 }
