@@ -2,11 +2,7 @@ pipeline {
     agent {
         label 'master'
     }
-    
-    tools {
-        maven 'Maven-3.8.7'
-    }
-    
+        
     environment {
         MAVEN_OPTS = '-Xmx256m -Xms128m'
         JOB_NAME = 'IGP-Package-Job'
