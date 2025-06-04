@@ -1,0 +1,89 @@
+pipeline {
+    agent { 
+        label 'master' 
+    }
+    
+    environment {
+        MAVEN_OPTS = '-Xmx256m -Xms128m'
+        JOB_NAME = 'IGP-Package-Job'
+    }
+    
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+        timeout(time: 10, unit: 'MINUTES')
+    }
+    
+    stages {
+        stage('Code Checkout') {
+            steps {
+                script {
+                    echo "📦 Starting packaging of IGP project"
+                    echo "📥 Checking out code..."
+                    git 'https://github.com/MosALs/IGP-Grad-Project.git'
+                }
+            }
+        }
+        
+        stage('Code Packaging') {
+            steps {
+                script {
+                    echo "📦 Creating JAR package from 3 classes..."
+                    
+                    // Create package (skip tests since they ran in previous job)
+                    sh 'mvn package -DskipTests'
+                    
+                    echo "✅ Packaging completed!"
+                    echo "📁 Package created:"
+                    sh 'ls -lh target/*.jar || echo "No JAR files found"'
+                    
+                    // Get JAR size
+                    sh '''
+                        if [ -f target/*.jar ]; then
+                            echo "📊 JAR file details:"
+                            du -h target/*.jar
+                        fi
+                    '''
+                }
+            }
+        }
+        
+        stage('Package Info') {
+            steps {
+                script {
+                    echo "📋 Creating deployment information..."
+                    
+                    writeFile file: 'deployment-info.txt', text: """
+IGP Grad Project - Deployment Package
+====================================
+Build: #${BUILD_NUMBER}
+Date: ${new Date()}
+Classes: 3 main classes + 1 test class
+Package: JAR file ready for deployment
+
+Run Command:
+java -jar target/*.jar
+
+Status: READY ✅
+"""
+                    
+                    echo "📄 Deployment info:"
+                    sh 'cat deployment-info.txt'
+                }
+            }
+        }
+    }
+    
+    post {
+        success {
+            echo "🎉 Successfully packaged IGP project!"
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            archiveArtifacts artifacts: 'deployment-info.txt'
+        }
+        failure {
+            echo "❌ Packaging failed!"
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
